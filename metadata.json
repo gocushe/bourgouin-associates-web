@@ -1,0 +1,7 @@
+{
+  "name": "Wealth Management Mind Map",
+  "description": "An elegant and interactive mind map of Full Wealth Management branches with hover insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

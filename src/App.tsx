@@ -170,6 +170,16 @@ export default function App() {
   const [bookingEmail, setBookingEmail] = useState("");
   const [bookingTime, setBookingTime] = useState("10:00 AM");
   const [bookingNotes, setBookingNotes] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleCloseBooking = () => {
     setIsBookingOpen(false);
@@ -191,14 +201,16 @@ export default function App() {
 
   // Disable selected branch when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setSelectedId(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, []);
 
@@ -319,7 +331,9 @@ export default function App() {
                     <div className="flex items-center gap-2 bg-white border border-neutral-300 rounded-md py-1.5 px-3 shadow-xs">
                       <Info size={13} className="text-neutral-500 shrink-0" />
                       <span className="text-[11px] font-mono text-neutral-600">
-                        Hover branches to reveal details. Click to lock view.
+                        {isMobile 
+                          ? "Tap branches to reveal details. Swipe map to scroll." 
+                          : "Hover branches to reveal details. Click to lock view."}
                       </span>
                     </div>
                     {activeId && (
@@ -337,10 +351,10 @@ export default function App() {
                 </div>
 
                 {/* Radial Mind Map Container */}
-                <div className="w-full max-w-6xl px-6 flex justify-center">
+                <div className="w-full overflow-x-auto pb-8 px-6">
                   <div
                     ref={containerRef}
-                    className="w-full max-w-[900px] aspect-[4/3] bg-white rounded-none border border-black relative overflow-visible shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+                    className="mx-auto min-w-[850px] max-w-[900px] aspect-[4/3] bg-white rounded-none border border-black relative overflow-visible shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] shrink-0"
                   >
                     {/* SVG Connections */}
                     <svg
@@ -459,19 +473,26 @@ export default function App() {
                       const isBottomCenter = x >= 450 && x <= 550 && y >= 350;
 
                       let cardAlignmentClass = "";
+                      let bridgeClass = "";
                       if (isLeftHalf) {
                         cardAlignmentClass = "left-full ml-4 top-1/2 -translate-y-1/2";
+                        bridgeClass = "before:absolute before:content-[''] before:top-0 before:bottom-0 before:-left-6 before:w-6 before:bg-transparent";
                       } else if (isRightHalf) {
                         cardAlignmentClass = "right-full mr-4 top-1/2 -translate-y-1/2";
+                        bridgeClass = "before:absolute before:content-[''] before:top-0 before:bottom-0 before:-right-6 before:w-6 before:bg-transparent";
                       } else if (isTopCenter) {
                         cardAlignmentClass = "top-full mt-4 left-1/2 -translate-x-1/2";
+                        bridgeClass = "before:absolute before:content-[''] before:left-0 before:right-0 before:-top-6 before:h-6 before:bg-transparent";
                       } else if (isBottomCenter) {
                         cardAlignmentClass = "bottom-full mb-4 left-1/2 -translate-x-1/2";
+                        bridgeClass = "before:absolute before:content-[''] before:left-0 before:right-0 before:-bottom-6 before:h-6 before:bg-transparent";
                       }
 
                       return (
                         <div
                           key={branch.id}
+                          onMouseEnter={isMobile ? undefined : () => setHoveredId(branch.id)}
+                          onMouseLeave={isMobile ? undefined : () => setHoveredId(null)}
                           style={{
                             left: `${xPct}%`,
                             top: `${yPct}%`,
@@ -482,8 +503,6 @@ export default function App() {
                         >
                           {/* Label Box */}
                           <div
-                            onMouseEnter={() => setHoveredId(branch.id)}
-                            onMouseLeave={() => setHoveredId(null)}
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedId(selectedId === branch.id ? null : branch.id);
@@ -493,7 +512,7 @@ export default function App() {
                                 ? "bg-black text-white border-black scale-105"
                                 : isAnyActive
                                 ? "bg-white text-neutral-300 border-neutral-100 scale-95"
-                                : "bg-white text-black border-black hover:bg-black hover:text-white"
+                                : `bg-white text-black border-black ${isMobile ? "" : "hover:bg-black hover:text-white"}`
                             }`}
                           >
                             {branch.label}
@@ -501,15 +520,13 @@ export default function App() {
 
                           {/* Hover Popup Card */}
                           <AnimatePresence>
-                            {isCurrentActive && (
+                            {isCurrentActive && !isMobile && (
                               <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.95 }}
                                 transition={{ duration: 0.15, ease: "easeOut" }}
-                                onMouseEnter={() => setHoveredId(branch.id)}
-                                onMouseLeave={() => setHoveredId(null)}
-                                className={`absolute ${cardAlignmentClass} bg-white border-2 border-black p-5 rounded-none shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] min-w-[320px] max-w-[360px] z-50 pointer-events-auto`}
+                                className={`absolute ${cardAlignmentClass} ${bridgeClass} bg-white border-2 border-black p-5 rounded-none shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] min-w-[320px] max-w-[360px] z-50 pointer-events-auto`}
                               >
                                 <div className="flex items-center justify-between pb-2 mb-3 border-b border-black">
                                   <span className="text-[12px] font-mono uppercase tracking-widest font-bold text-black flex items-center gap-1.5">
@@ -908,6 +925,67 @@ export default function App() {
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* MOBILE BOTTOM SHEET */}
+      <AnimatePresence>
+        {isMobile && activeId && (
+          <>
+            {/* Dark backdrop for mobile bottom sheet */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.3 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setHoveredId(null);
+                setSelectedId(null);
+              }}
+              className="fixed inset-0 z-40 bg-black"
+            />
+            {/* Bottom Sheet Card */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t-2 border-black p-6 shadow-[0_-8px_24px_rgba(0,0,0,0.15)] rounded-t-2xl max-h-[80vh] overflow-y-auto"
+            >
+              {/* Drag Handle Indicator */}
+              <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-5" />
+
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-black">
+                <span className="text-[13px] font-mono uppercase tracking-widest font-bold text-black flex items-center gap-1.5">
+                  <Layers size={14} className="text-black" />
+                  {branches.find(b => b.id === activeId)?.label}
+                </span>
+                <button
+                  onClick={() => {
+                    setHoveredId(null);
+                    setSelectedId(null);
+                  }}
+                  className="p-1 text-black hover:text-neutral-500 transition-colors focus:outline-none"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-neutral-900 text-[15px] leading-relaxed font-sans font-normal mb-5">
+                {branches.find(b => b.id === activeId)?.description}
+              </p>
+
+              <div className="space-y-3 pb-4">
+                {branches.find(b => b.id === activeId)?.bullets.map((bullet, idx) => (
+                  <div key={idx} className="flex items-start gap-3 text-[14px] text-black">
+                    <span className="mt-2 shrink-0 w-1.5 h-1.5 bg-black rotate-45" />
+                    <span className="font-mono text-neutral-700 leading-normal">
+                      {bullet}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
